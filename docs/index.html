@@ -1,0 +1,56 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>ソシャゲ情報コレクター</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--tx:#1d2030;--sub:#6a7088;--ln:#e1e4ee;--ac:#5b5bf0;--bgc:#ececff}
+@media(prefers-color-scheme:dark){:root{--bg:#14151d;--card:#1e2030;--tx:#eceefa;--sub:#9aa0bd;--ln:#2f3350;--ac:#8c8cff;--bgc:#2b2d52}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,"Hiragino Sans","Noto Sans JP",sans-serif}
+main{max-width:980px;margin:0 auto;padding:16px}h1{font-size:20px;margin:0}.sub{color:var(--sub);font-size:12px;margin:2px 0 12px}
+.p{background:var(--card);border:1px solid var(--ln);border-radius:12px;padding:12px;margin-bottom:12px}
+.ch{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.c{border:1px solid var(--ln);background:none;color:var(--tx);border-radius:99px;padding:5px 11px;font-size:13px;cursor:pointer}
+.c.on{background:var(--bgc);border-color:var(--ac);color:var(--ac);font-weight:600}
+input,select{padding:6px 9px;border-radius:8px;border:1px solid var(--ln);background:var(--bg);color:var(--tx);font-size:13px}
+.i{display:grid;grid-template-columns:104px 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--ln)}.i:first-child{border-top:0}
+.th{width:104px;height:70px;border-radius:8px;object-fit:cover;background:var(--bgc)}.ph{width:104px;height:70px;border-radius:8px;background:var(--bgc)}
+.t{font-size:11px;background:var(--bgc);color:var(--ac);border-radius:6px;padding:1px 7px;margin-right:4px}
+.g{font-size:11px;color:var(--sub);margin-right:4px}a{color:var(--tx);text-decoration:none}a:hover{color:var(--ac)}.s{font-size:11px;color:var(--sub)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.a img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;background:var(--bgc);display:block}
+.a .m{font-size:12px;margin-top:4px;line-height:1.35}.n{color:var(--sub);font-size:11px}
+button.r{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:7px 12px;cursor:pointer}
+</style></head><body><main>
+<h1>ソシャゲ情報コレクター</h1><p class="sub" id="st"></p>
+<div class="p"><div class="ch" id="tab"></div></div>
+<div class="p"><div class="ch" id="tc"></div></div>
+<div class="p"><div class="ch" id="cc"></div><div class="ch" style="margin-top:8px">
+<input id="kw" placeholder="キーワード（例：水着）" oninput="draw()"><select id="so" onchange="draw()"></select>
+<button class="r" id="rf" style="display:none" onclick="fetch('/refresh').then(()=>setTimeout(load,5000))">今すぐ更新</button></div></div>
+<div class="p" id="list"></div></main>
+<script>
+var D=[],T=[],C="すべて",TAB="news",CATS=["すべて","衣装","キャラ","番組","イベント","話題"];
+var local=location.hostname=="127.0.0.1"||location.hostname=="localhost";
+function e(s){var d=document.createElement("div");d.textContent=s==null?"":s;return d.innerHTML}
+function src(x){if(!x.img)return"";if(x.pix)return local?"/img?u="+encodeURIComponent(x.img):x.img.replace("i.pximg.net","i.pixiv.re");return x.img}
+function load(){fetch(local?'/data.json':'data.json').then(r=>r.json()).then(j=>{D=j.items;
+ document.getElementById('st').textContent="最終収集: "+j.last+(local?"（"+j.interval+"分ごとに自動更新）":"")+(j.err&&j.err.length?" / 一部取得エラー: "+j.err.join(" | "):"");draw()}).catch(()=>{document.getElementById('list').textContent="データがまだありません"})}
+function btn(box,label,on,fn){var b=document.createElement('button');b.className="c"+(on?" on":"");b.textContent=label;b.onclick=fn;box.appendChild(b)}
+function draw(){
+ var tab=document.getElementById('tab');tab.innerHTML="";
+ btn(tab,"ニュース",TAB=="news",()=>{TAB="news";draw()});btn(tab,"イラスト（pixiv）",TAB=="art",()=>{TAB="art";draw()});
+ var so=document.getElementById('so'),cur=so.value;so.innerHTML="";
+ (TAB=="art"?[["new","新しい順"],["likes","いいね順"],["marks","ブックマーク順"]]:[["new","新しい順"]]).forEach(o=>{var op=document.createElement('option');op.value=o[0];op.textContent=o[1];so.appendChild(op)});
+ if([...so.options].some(o=>o.value==cur))so.value=cur;
+ if(local)document.getElementById('rf').style.display="";
+ document.getElementById('cc').style.display=TAB=="news"?"":"none";
+ var games=[...new Set(D.map(x=>x.game))],tc=document.getElementById('tc');tc.innerHTML="";
+ games.forEach(g=>btn(tc,g,T.includes(g),()=>{T.includes(g)?T.splice(T.indexOf(g),1):T.push(g);draw()}));
+ var cc=document.getElementById('cc');cc.innerHTML="";CATS.forEach(c=>btn(cc,c,C==c,()=>{C=c;draw()}));
+ var kw=document.getElementById('kw').value.trim();
+ var L=D.filter(x=>(TAB=="art")==!!x.pix&&(!T.length||T.includes(x.game))&&(TAB=="art"||C=="すべて"||x.cat==C)&&(!kw||x.title.includes(kw)));
+ var s=so.value;if(s!="new")L.sort((a,b)=>(b[s]||0)-(a[s]||0));
+ var box=document.getElementById('list');
+ if(!L.length){box.textContent="該当なし（初回は収集に数分かかります）";return}
+ if(TAB=="art"){box.innerHTML='<div class="grid">'+L.slice(0,120).map(x=>'<div class="a"><a href="'+e(x.link)+'" target="_blank" rel="noopener"><img loading="lazy" referrerpolicy="no-referrer" src="'+e(src(x))+'" alt=""></a><div class="m">'+e(x.title)+'<div class="n">'+e(x.src)+' ・ '+e(x.game)+'</div><div class="n">♥ '+(x.likes||0)+' ・ ★ '+(x.marks||0)+' ・ 👁 '+(x.views||0)+'</div></div></div>').join("")+'</div>'}
+ else{box.innerHTML=L.slice(0,150).map(x=>'<div class="i"><div>'+(x.img?'<img class="th" loading="lazy" referrerpolicy="no-referrer" src="'+e(src(x))+'" onerror="this.className=\'ph\';this.removeAttribute(\'src\')" alt="">':'<div class="ph"></div>')+'</div><div><span class="t">'+e(x.cat)+'</span><span class="g">'+e(x.game)+'</span><a href="'+e(x.link)+'" target="_blank" rel="noopener">'+e(x.title)+'</a><div class="s">'+e(x.src)+' ・ '+new Date(x.ts*1000).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</div></div></div>').join("")}
+}
+load();setInterval(load,60000);
+</script></body></html>
